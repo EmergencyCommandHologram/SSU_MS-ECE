@@ -7,29 +7,35 @@ c           = 3e8;          % speed of light
 d           = 0.5;          % element spacing in lambda (λ/2)
 PHASE_WIDTH = 16;           % DDS phase input width (bits)
 
-%% Compute
+%% Custom Fuction for Phase Calculation
+function [phi_ROM_A, phi_ROM_B, theta_rad, Phi_rad] = make_2el_phase_words(theta_min, theta_max, N_angles, ...
+                                                f_c, c, d_lambda, PHASE_WIDTH)
+% make_2el_phase_words  compute per-antenna phase words for a 2-element array
+%   d_lambda = element spacing in wavelengths (e.g. 0.5 for lambda/2)
+%   returns:
+%     phi_words_A, phi_words_B : uint arrays (0..2^PHASE_WIDTH-1)
+%     theta_rad : angles (radians)
+%     Phi_rad   : inter-element phase difference (radians)
+%
+% Example:
+% [A,B,th,P] = make_2el_phase_words(-50,50,10,24e9,3e8,0.5,16);
+
 lambda = c / f_c;
-theta  = linspace(theta_min, theta_max, N_angles) * pi/180; % radians
-phi    = -2*pi*d*sin(theta);    % radians
+theta_rad = linspace(theta_min, theta_max, N_angles) * pi/180;
 
-%% Normalize to [0,1)
-phi_norm = mod(phi, 2*pi) / (2*pi);
+% inter-element phase difference (radians)
+% positive Phi corresponds to lag on element 2 relative to element 1
+Phi_rad = (2*pi * d_lambda) .* sin(theta_rad);   % = 2*pi*d/λ * sin(theta)
 
-%% Quantize to integer range of DDS
-phi_quant = round(phi_norm * (2^PHASE_WIDTH - 1));
+% choose per-element offsets as +Phi/2 and -Phi/2 (centred)
+phaseA =  +0.5 * Phi_rad;   % element A
+phaseB =  -0.5 * Phi_rad;   % element B
 
-%% Display
-disp('Phase shifts (radians):')
-disp(phi)
+% normalize to [0,1) where 1 = 2*pi
+phi_ROM_A = mod(phaseA, 2*pi) / (2*pi);
+phi_ROM_B = mod(phaseB, 2*pi) / (2*pi);
 
-disp('Phase shifts normalized [0,1):')
-disp(phi_norm)
-
-disp(['DDS integer input values (', num2str(PHASE_WIDTH), '-bit):'])
-disp(phi_quant)
-
-%% Export for ROM
-rom_values = phi_norm;   % Use this in Simulink ROM block
+end
 
 %% Frequency Calculator
 function [fcw, binstr] = make_fcw(f_out, f_clk, N)
@@ -57,6 +63,13 @@ function [fcw, binstr] = make_fcw(f_out, f_clk, N)
     fprintf('Binary (%d-bit): %s\n', N, binstr);
     fprintf('Produced f_out = %.9f Hz  (error = %.6f Hz)\n', f_prod, f_prod - f_out);
 end
+
+%% Get Phase values
+%Params: Angle1, Angle2, Angle #, RF, c, 0.5(half space), word size
+%angles,
+[ROMA, ROMB, theta, Phi] = make_2el_phase_words(-50,50,10,24e9,3e8,0.5,16);
+disp(table((1:10)', theta'*180/pi, Phi', ROMA', ROMB', 'VariableNames', ...
+    {'Idx','Theta_deg','Phi_rad','ROMA','ROMB'}))
 
 %% sweep times for coutnere
 %For 100ms, 10,000,000, for 10ms, 1,000,000
