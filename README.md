@@ -8,4 +8,9 @@ Welcome to my github repository for my masters project at SSU. Currently the rep
 - Vivado 2025.1
 - Artix-7 AC701 Development Board
 
+Inside Main are the Matlab scripts, and the Outdated folder is simply older scripts and Simulink files in case I need to reference them later.
+InitializationOfVariablesRev00x.m is a script that needs to be ran before opening the Simulink file, as it initializes all the variables contained in the blocks.
+RadarSimulinkProjectRev00x.slx is the main Simulink file containing the block model
+The .slxc files can be ignored.
+
 More will be added to this readme later.
