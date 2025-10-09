@@ -23,9 +23,11 @@ disp(phi_norm)
 %/////////////////////////////////////////////////////////////////////////
 %200,000 = 1ms, 20,000 = 100us, 2,000 = 10us, 200 = 1us
 %/////////////////////////////////////////////////////////////////////////
-SweepTime= 400000+(400000/10);
-AngleTime=(SweepTime-(SweepTime/10))/10;
-FreqDeltaPeriod = 45;   %10.24us (2048 samples @5ns) 2048/FCWsize) = delayfordelta
+FreqDeltaPeriod = 45;   %45*361 = 18264~ close to 2^14 for FFT length
+TimeValue = FreqDeltaPeriod*361;
+AngleTime = TimeValue*10; %0.2ms
+SweepTime= TimeValue*110; %2.2ms
+ChirpNc = 10; %How many chirps per frame?
 ChirpMaxFreq = 9.5e6;
 ChirpMinFreq = 0.5e6;
 ChirpFreqStepSize = 0.05e6;
@@ -34,6 +36,7 @@ DopplerShiftVmax = 40;
 DopplerStep = 5;
 SystemFs = 200e6;
 RXFFTLength= 16384;
+ChirpSizeLength = FreqDeltaPeriod*361;
 %Adjust OffsetDelayR based on delay between beginning, and the ASR
 OffsetDelayR = 2;
 
@@ -55,7 +58,7 @@ FCW = [FCW_p1, FCW_p2];
 
 %Generates 0 at either end, unlike hamming
 %LengthofFCW*FreqDeltaPeriod is how many samples per chirp
-WindowCoefficients = kaiser(RXFFTLength,2.0); 
+WindowCoefficients = hann(ChirpSizeLength); 
 WindowCoefficients = transpose(WindowCoefficients);
 
 %DopplerShift
@@ -76,6 +79,15 @@ ASR_LUT([1])=0;
 %Expect freq = 
 TestDelay = ((2*(60)/c)*SystemFs)
 
-H_calc_Freq = (2*(1)*((ChirpMaxFreq-ChirpMinFreq)/100e-6))/c
+H_calc_Freq = (2*(600)*((ChirpMaxFreq-ChirpMinFreq)/100e-6))/c
 H_calc_period = 1/H_calc_Freq
-H_calc_Range = (c*(286)*1000)/(2*((ChirpMaxFreq-ChirpMinFreq)/100e-6))
+H_calc_Range = (c*(90)*1000)/(2*((ChirpMaxFreq-ChirpMinFreq)/81e-6))
+
+load('FIR_LPF1.mat');
+B = 16; % Number of bits
+L = floor(log2((2^(B-1)-1)/max(FIR_LPF1)));  % Round towards zero to avoid overflow
+bsc = FIR_LPF1*2^L;
+h = dfilt.dffir(bsc);
+h.Arithmetic = 'fixed';
+h.CoeffWordLength = 16;
+FIRF1 = h.Numerator;
