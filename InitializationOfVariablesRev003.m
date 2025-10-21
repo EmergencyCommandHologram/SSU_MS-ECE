@@ -23,11 +23,12 @@ disp(phi_norm)
 %/////////////////////////////////////////////////////////////////////////
 %200,000 = 1ms, 20,000 = 100us, 2,000 = 10us, 200 = 1us
 %/////////////////////////////////////////////////////////////////////////
-FreqDeltaPeriod = 45;   %45*361 = 18264~ close to 2^14 for FFT length
-TimeValue = FreqDeltaPeriod*361;
-AngleTime = TimeValue*10; %0.2ms
-SweepTime= TimeValue*110; %2.2ms
-ChirpNc = 10; %How many chirps per frame?
+FreqDeltaPeriod = 45;   %45*361 = 16245~ close to 2^14 for FFT length
+TimeValue = 16384;
+ChirpNc = 128; %How many chirps per frame?
+AngleTime = TimeValue*ChirpNc; %10 chirps for each frame
+SweepTime= TimeValue*ChirpNc*11; %2.2ms
+
 ChirpMaxFreq = 9.5e6;
 ChirpMinFreq = 0.5e6;
 ChirpFreqStepSize = 0.05e6;
@@ -38,7 +39,7 @@ SystemFs = 200e6;
 RXFFTLength= 16384;
 ChirpSizeLength = FreqDeltaPeriod*361;
 %Adjust OffsetDelayR based on delay between beginning, and the ASR
-OffsetDelayR = 2;
+OffsetDelayR = 1;
 
 %Range param for button sim
 R_min = 0;
@@ -83,11 +84,3 @@ H_calc_Freq = (2*(600)*((ChirpMaxFreq-ChirpMinFreq)/100e-6))/c
 H_calc_period = 1/H_calc_Freq
 H_calc_Range = (c*(90)*1000)/(2*((ChirpMaxFreq-ChirpMinFreq)/81e-6))
 
-load('FIR_LPF1.mat');
-B = 16; % Number of bits
-L = floor(log2((2^(B-1)-1)/max(FIR_LPF1)));  % Round towards zero to avoid overflow
-bsc = FIR_LPF1*2^L;
-h = dfilt.dffir(bsc);
-h.Arithmetic = 'fixed';
-h.CoeffWordLength = 16;
-FIRF1 = h.Numerator;
