@@ -14,7 +14,6 @@ RadarSimulinkProjectRev00x.slx is the main Simulink file containing the block mo
 The .slxc files can be ignored.
 
 Current Progress:
-- Task
 - Generating simulated signal (X)
 - Range Processing (X)
 - Velocity Calculation (X)
