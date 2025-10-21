@@ -13,4 +13,27 @@ InitializationOfVariablesRev00x.m is a script that needs to be ran before openin
 RadarSimulinkProjectRev00x.slx is the main Simulink file containing the block model
 The .slxc files can be ignored.
 
+Current Progress:
+Task
+Generating simulated signal (X)
+Range Processing (X)
+Velocity Calculation (X)
+Angle Estimation (X)
+Data Transmission ( )
+Configure in Vivado ( )
+Display in Matlab ( )
+Program FPGA ( )
+Testing ( )
+
+What is left to do:
+Detatch RAM from being written to and send to Gateway Out
+Do not throttle sweeping to send data if possible
+Review delays and latencies, rename blocks
+Purchase VMC license
+Import to Vivado, set peripherals
+Attempt to build
+Write Matlab interface code
+Program FPGA
+Test
+
 More will be added to this readme later.
