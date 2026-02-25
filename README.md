@@ -25,7 +25,7 @@ Current Progress:
 - Testing ( )
 
 What is left to do:
-- Determine discrepency between the Range FFT's output and the output after reordering the data for the Doppler FFT
+- Ensure velocity results match expected values
 - Confirm that all data is being sent out to the workspace correctly. Identify and fix any other issues.
 - Test
 
