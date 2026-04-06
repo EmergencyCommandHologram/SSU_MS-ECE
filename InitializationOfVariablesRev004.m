@@ -9,10 +9,7 @@ N_angles    = 10;           % number of steps
 f_c         = 24e9;         % carrier freq (Hz)
 c           = 3e8;          % speed of light
 d           = 0.5;          % element spacing in lambda (λ/2)
-PHASE_WIDTH = 24;           % DDS phase input width (bits)
-NFilterOrder           = 24;  
 SystemFs = 192e6;
-% Bits
 
 %% Compute
 lambda = c / f_c;
@@ -31,63 +28,58 @@ disp(phi_norm)
 %/////////////////////////////////////////////////////////////////////////
 TimeValue = 16384;
 ChirpNc = 128; %How many chirps per frame?
-AngleTime = TimeValue*ChirpNc; %10 chirps for each frame
-SweepTime= TimeValue*ChirpNc*11; %2.2ms
-P1 = 1/SystemFs;
-P2 = 1/(SystemFs/16);
+AngleTime = TimeValue*ChirpNc; %Number of samples in each angle
+SweepTime= TimeValue*ChirpNc*11; %Number of samples in whole sweep
+DeciFactor = 8; %how much to decimate
+P1 = 1/SystemFs; %Common period for most blocks
+P2 = 1/(SystemFs/DeciFactor); %Decimated period (not used?)
 
-ChirpMaxFreq = 9.5e6;
-ChirpMinFreq = 0.5e6;
-ChirpFreqStepSize = 0.05e6;
+ChirpMaxFreq = 10e6; 
+ChirpMinFreq = 1e6;
+ChirpFreqStepSize = 0.00055e6;
 DopplerShiftVmin = 0;
 DopplerShiftVmax = 36;
 DopplerStep = 3;
-RXFFTLength= 16384/16;
-WindowLength = 16384;
-%ChirpSizeLength = FreqDeltaPeriod*361;
-%Adjust OffsetDelayR based on delay between beginning, and the ASR
-OffsetDelayR = 1;
+RXFFTLength= TimeValue/DeciFactor;
+WindowLength = TimeValue;
 
 %Range param for button sim
 R_min = 0;
 R_max = 300;
-N_pos = 11;
+N_pos = 9;
 Btn_Debounce = 20000;
 
 %/////////////////////////////////////////////////////////////////////////
 %/////////////////////////////////////////////////////////////////////////
 %% Generate frequencies
-% desired chirp samples
-desiredLen = 16384;
+%% Parameters
+desiredLen = 16384;  % samples per chirp
+t = (0:desiredLen-1)/SystemFs;
+T = desiredLen / SystemFs;
 
-% choose Nfreq as a power of two
-Nfreq = 4096;
+k = (ChirpMaxFreq - ChirpMinFreq) / (T/2); % slope
 
-% build frequency vector with Nfreq uniformly spaced points
-FreqArray = linspace(ChirpMinFreq, ChirpMaxFreq, Nfreq);
+% Triangular chirp
+f = zeros(size(t));
 
-% forward sweep
-FCW_p1 = FreqArray ./ SystemFs;
+for i = 1:length(t)
+    if t(i) <= T/2
+        f(i) = ChirpMinFreq + k*t(i);
+    else
+        f(i) = ChirpMaxFreq - k*(t(i)-T/2);
+    end
+end
 
-% backward sweep (exclude first & last to avoid duplicates)
-FCW_p2 = fliplr(FCW_p1(2:end-1));
-
-% triangular base waveform
-FCW_base = [FCW_p1 FCW_p2];
-
-% exact-length interpolation
-FCW = interp1(1:length(FCW_base), FCW_base, ...
-    linspace(1, length(FCW_base), desiredLen), 'linear');
+FCW = f / SystemFs;
+%FCW = (ChirpMinFreq:ChirpFreqStepSize:ChirpMaxFreq)./SystemFs;
 
 % Now chirp length is exactly:
-ChirpSizeLength = length(FCW);   % = 8192 exactly
+ChirpSizeLength = TimeValue;   % = 8192 exactly
 FreqDeltaPeriod = 1;             % because each sample is one FCW update
-
-
 %Generates 0 at either end, unlike hamming
 %LengthofFCW*FreqDeltaPeriod is how many samples per chirp
-WindowCoefficients = hann(WindowLength); 
-WindowCoefficients = transpose(WindowLength);
+WindowCoefficients = hamming(ChirpSizeLength); 
+WindowCoefficients = transpose(WindowCoefficients);
 
 % Generate velocity vector
 v_mps = DopplerShiftVmin:DopplerStep:DopplerShiftVmax;
@@ -108,22 +100,43 @@ R_check = k_test*c/(2*SystemFs);
 
 %% Filter creation
 %% Parameters
-fc1 = 0.3e6;           % Cutoff frequency for filter 1
-fc2 = 10e6;          % Cutoff frequency for filter 2
+fc1 = 0.8e6;
+fc2 = 5e3; % Cutoff frequency for filter 1
 NFilterOrder = 255;             % Filter order (change if needed)
 intBits = 16;        % Number of bits for integer coefficients
 
-%% Design low-pass filters using fir1
-h1 = fir1(NFilterOrder, fc1/(SystemFs/2), 'low');   % 1 MHz filter
-h2 = fir1(NFilterOrder, fc2/(SystemFs/2), 'low');   % 10 MHz filter
+%% Design low-pass filters using fir2
+f1 = [0 0.4 0.5 1];
+m1 = [1 1 0 0];
+b1 = fir2(30,f1,m1);
+
+f2 = [0 0.2 0.3 1];
+m2 = [1 1 0 0];
+b2 = fir2(30,f2,m2);
+
+f3 = [0 0.15 0.15 1];
+m3 = [1 1 0 0];
+b3 = fir2(30,f3,m3);
+
+figure(1);
+[h1,w1] = freqz(b1,1);
+[h2,w2] = freqz(b1,1);
+[h3,w3] = freqz(b1,1);
+subplot(1,3,1);
+plot(f1,m1,w1/pi,abs(h1))
+subplot(1,3,2);
+plot(f2,m2,w2/pi,abs(h2))
+subplot(1,3,3);
+plot(f3,m3,w3/pi,abs(h3))
 
 %% Normalize to use full integer range
 maxInt = 2^(intBits-1)-1;
+h3_int = round(h3 / sum(h3) * maxInt);
+%h1_int = round(h1 / max(abs(h1)) * maxInt);
+filt1divide = sum(h3_int);
 
-h1_int = round(h1 / max(abs(h1)) * maxInt);
-h2_int = round(h2 / max(abs(h2)) * maxInt);
+gain = sum(h3);
+disp(gain)
+gain_int = sum(h3_int);
+disp(gain_int)
 
-filt1divide = sum(h1_int);
-filt2divide = sum(h2_int);
-
-movavgcoe = ones(1, 10)/10;
