@@ -19,13 +19,12 @@ The last file, PostProcessingAndVisualizationRev00x.m is run at the completion o
 Current Progress:
 - Generating simulated signal (X)
 - Range Processing (X)
-- Velocity Calculation () -> (Debugging)
+- Velocity Calculation (X)
 - Angle Estimation ( )
 - Display in Matlab (X)
-- Testing ( )
+- Testing (X)
 
 What is left to do:
-- Ensure velocity results match expected values
-- Confirm that all data is being sent out to the workspace correctly. Identify and fix any other issues.
+- Check results and test with noise
 - Test
 
